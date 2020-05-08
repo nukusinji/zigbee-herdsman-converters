@@ -360,7 +360,10 @@ const converters = {
             }
 
             if (msg.data.hasOwnProperty('batteryAlarmState')) {
-                payload['battery_low'] = msg.data.batteryAlarmState;
+                const battery1Low = (msg.data.batteryAlarmState & 1<<0) > 0;
+                const battery2Low = (msg.data.batteryAlarmState & 1<<9) > 0;
+                const battery3Low = (msg.data.batteryAlarmState & 1<<19) > 0;
+                payload['battery_low'] = battery1Low || battery2Low || battery3Low;
             }
 
             if (Object.keys(payload).length !== 0) {
@@ -1096,9 +1099,11 @@ const converters = {
         convert: (model, msg, publish, options, meta) => {
             if (msg.data['65281']) {
                 // DEPRECATED: only return lux here (change illuminance_lux -> illuminance)
-                let illuminance = msg.data['65281']['11'];
-                illuminance = calibrateAndPrecisionRoundOptions(illuminance, options, 'illuminance');
-                return {illuminance, illuminance_lux: illuminance};
+                const illuminance = msg.data['65281']['11'];
+                return {
+                    illuminance: calibrateAndPrecisionRoundOptions(illuminance, options, 'illuminance'),
+                    illuminance_lux: calibrateAndPrecisionRoundOptions(illuminance, options, 'illuminance_lux'),
+                };
             }
         },
     },
@@ -1107,9 +1112,11 @@ const converters = {
         type: ['attributeReport', 'readResponse'],
         convert: (model, msg, publish, options, meta) => {
             // DEPRECATED: only return lux here (change illuminance_lux -> illuminance)
-            let illuminance = msg.data['measuredValue'];
-            illuminance = calibrateAndPrecisionRoundOptions(illuminance, options, 'illuminance');
-            return {illuminance, illuminance_lux: illuminance};
+            const illuminance = msg.data['measuredValue'];
+            return {
+                illuminance: calibrateAndPrecisionRoundOptions(illuminance, options, 'illuminance'),
+                illuminance_lux: calibrateAndPrecisionRoundOptions(illuminance, options, 'illuminance_lux'),
+            };
         },
     },
     WSDCGQ01LM_WSDCGQ11LM_interval: {

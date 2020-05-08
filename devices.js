@@ -4314,6 +4314,7 @@ const devices = [
         description: 'Zigbee USB mini LED controller RGB + CCT',
         extend: gledopto.light,
         supports: 'on/off, brightness, color temperature, color',
+        meta: {disableDefaultResponse: true},
     },
     {
         zigbeeModel: ['GL-S-004Z'],
@@ -6534,10 +6535,7 @@ const devices = [
         vendor: 'Eurotronic',
         description: 'Spirit Zigbee wireless heater thermostat',
         supports: 'temperature, heating system control',
-        fromZigbee: [
-            fz.eurotronic_thermostat,
-            fz.battery,
-        ],
+        fromZigbee: [fz.eurotronic_thermostat, fz.battery],
         toZigbee: [
             tz.thermostat_occupied_heating_setpoint, tz.thermostat_unoccupied_heating_setpoint,
             tz.thermostat_local_temperature_calibration, tz.eurotronic_thermostat_system_mode,
@@ -9440,6 +9438,15 @@ const devices = [
         description: 'PIR motion sensor, wireless motion detector',
         supports: 'occupancy',
         fromZigbee: [fz.ias_occupancy_alarm_1],
+        toZigbee: [],
+    },
+    {
+        zigbeeModel: ['ZB-DoorSensor-D0003'],
+        model: 'ZS110050078',
+        vendor: 'Linkind',
+        description: 'Door/window Sensor',
+        supports: 'contact',
+        fromZigbee: [fz.ias_contact_alarm_1],
         toZigbee: [],
     },
 
