@@ -1072,7 +1072,7 @@ const devices = [
     {
         zigbeeModel: ['TS0121'],
         model: 'TS0121',
-        description: '10A UK smart plug',
+        description: '10A UK or 16A EU smart plug',
         supports: 'on/off',
         vendor: 'TuYa',
         fromZigbee: [fz.on_off],
@@ -1645,7 +1645,7 @@ const devices = [
         model: '433714',
         vendor: 'Philips',
         description: 'Hue Lux A19 bulb E27',
-        extend: hue.light_onoff_brightness,
+        extend: hue.light_onoff_brightness_colortemp,
         ota: ota.zigbeeOTA,
     },
     {
@@ -3151,6 +3151,13 @@ const devices = [
         extend: generic.light_onoff_brightness_colortemp,
     },
     {
+        zigbeeModel: ['RS 229 T'],
+        model: 'RS 229 T',
+        vendor: 'Innr',
+        description: 'GU10 spot 350 lm, dimmable, white spectrum',
+        extend: generic.light_onoff_brightness_colortemp,
+    },
+    {
         zigbeeModel: ['RS 230 C'],
         model: 'RS 230 C',
         vendor: 'Innr',
@@ -4258,12 +4265,34 @@ const devices = [
         supports: 'on/off, brightness, color temperature',
     },
     {
-        zigbeeModel: ['GL-C-007'],
-        model: 'GL-C-007',
+        fingerprint: [
+            {type: 'Router', manufacturerName: 'GLEDOPTO', modelID: 'GL-C-007', endpoints: [
+                {ID: 11, profileID: 49246, deviceID: 528, inputClusters: [0, 3, 4, 5, 6, 8, 768], outputClusters: []},
+                {ID: 13, profileID: 49246, deviceID: 528, inputClusters: [4096], outputClusters: [4096]},
+            ]},
+        ],
+        model: 'GL-C-007-1ID', // 1 ID controls white and color together
         vendor: 'Gledopto',
-        description: 'Zigbee LED controller RGBW',
+        description: 'Zigbee LED controller RGBW (1 ID)',
         extend: gledopto.light,
-        supports: 'on/off, brightness, color, white',
+        supports: 'on/off, brightness, color temperature, color',
+    },
+    {
+        fingerprint: [
+            {type: 'Router', manufacturerName: 'GLEDOPTO', modelID: 'GL-C-007', endpoints: [
+                {ID: 11, profileID: 49246, deviceID: 528, inputClusters: [0, 3, 4, 5, 6, 8, 768], outputClusters: []},
+                {ID: 13, profileID: 49246, deviceID: 57694, inputClusters: [4096], outputClusters: [4096]},
+                {ID: 15, profileID: 49246, deviceID: 256, inputClusters: [0, 3, 4, 5, 6, 8, 768], outputClusters: []},
+            ]},
+        ],
+        model: 'GL-C-007-2ID', // 2 ID controls white and color separate
+        vendor: 'Gledopto',
+        description: 'Zigbee LED controller RGBW (2 ID)',
+        extend: gledopto.light,
+        supports: 'on/off, brightness, color temperature, color',
+        endpoint: (device) => {
+            return {rgb: 11, white: 15};
+        },
     },
     {
         zigbeeModel: ['GL-S-004ZS'],
@@ -4280,6 +4309,25 @@ const devices = [
         description: 'Zigbee LED controller RGBW plus model',
         extend: gledopto.light,
         supports: 'on/off, brightness, color, white',
+    },
+    {
+        fingerprint: [
+            // Although the device announces modelID GL-C-007, this is clearly a GL-C-008
+            // https://github.com/Koenkk/zigbee2mqtt/issues/3525
+            {type: 'Router', manufacturerName: 'GLEDOPTO', modelID: 'GL-C-007', endpoints: [
+                {ID: 11, profileID: 49246, deviceID: 528, inputClusters: [0, 3, 4, 5, 6, 8, 768], outputClusters: []},
+                {ID: 13, profileID: 49246, deviceID: 57694, inputClusters: [4096], outputClusters: [4096]},
+                {ID: 15, profileID: 49246, deviceID: 544, inputClusters: [0, 3, 4, 5, 6, 8, 768], outputClusters: []},
+            ]},
+        ],
+        model: 'GL-C-008-2ID', // 2 ID controls color temperature and color separate
+        vendor: 'Gledopto',
+        description: 'Zigbee LED controller RGB + CCT (2 ID)',
+        extend: gledopto.light,
+        supports: 'on/off, brightness, color temperature, color',
+        endpoint: (device) => {
+            return {rgb: 11, cct: 15};
+        },
     },
     {
         zigbeeModel: ['GL-C-008'],
@@ -5044,7 +5092,7 @@ const devices = [
         },
     },
     {
-        zigbeeModel: ['Z-SRN12N'],
+        zigbeeModel: ['Z-SRN12N', 'SZ-SRN12N'],
         model: 'SZ-SRN12N',
         vendor: 'SmartThings',
         description: 'Smart siren',
@@ -5686,9 +5734,18 @@ const devices = [
         model: 'PSM-29ZBSR',
         vendor: 'Climax',
         description: 'Power plug',
-        supports: 'on/off',
-        fromZigbee: [fz.on_off],
-        toZigbee: [tz.on_off],
+        supports: 'on/off, power measurement',
+        fromZigbee: [fz.on_off, fz.metering_power, fz.ignore_basic_report],
+        toZigbee: [tz.on_off, tz.ignore_transition],
+        meta: {configureKey: 4},
+        configure: async (device, coordinatorEndpoint) => {
+            const endpoint = device.getEndpoint(1);
+            await bind(endpoint, coordinatorEndpoint, ['genOnOff', 'seMetering']);
+            await configureReporting.onOff(endpoint);
+            await readMeteringPowerConverterAttributes(endpoint);
+            await configureReporting.instantaneousDemand(endpoint,
+                {'minimumReportInterval': 10, 'reportableChange': 2});
+        },
     },
 
     // HEIMAN
@@ -8108,6 +8165,13 @@ const devices = [
         extend: generic.light_onoff_brightness_colortemp_colorxy,
     },
     {
+        zigbeeModel: ['LXT56-LS27LX1.6'],
+        model: 'HGZB-DLC4-N15B',
+        vendor: 'Zemismart',
+        description: 'RGB LED downlight',
+        extend: generic.light_onoff_brightness_colortemp_colorxy,
+    },
+    {
         zigbeeModel: ['TS0302'],
         model: 'ZM-CSW032-D',
         vendor: 'Zemismart',
@@ -9408,7 +9472,7 @@ const devices = [
         model: 'ZL1000100-CCT-US-V1A02',
         vendor: 'Linkind',
         description: 'Zigbee LED 9W A19 bulb, dimmable & tunable',
-        extend: generic.light_onoff_brightness,
+        extend: generic.light_onoff_brightness_colortemp,
     },
     {
         zigbeeModel: ['ZBT-CCTLight-C4700107'],
@@ -9763,6 +9827,15 @@ const devices = [
                 multiplier: 1,
             });
         },
+    },
+    {
+        zigbeeModel: ['ZBHT-1'],
+        model: 'ZBHT-1',
+        vendor: 'Smartenit',
+        description: 'Temperature & humidity sensor ',
+        supports: 'temperature and humidity',
+        fromZigbee: [fz.battery, fz.temperature, fz.humidity],
+        toZigbee: [],
     },
 
     // Siterwell
