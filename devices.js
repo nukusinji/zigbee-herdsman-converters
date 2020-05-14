@@ -1002,6 +1002,7 @@ const devices = [
         whiteLabel: [
             {vendor: 'CR Smart Home', model: 'TS0001'},
             {vendor: 'Lonsonho', model: 'TS0001'},
+            {vendor: 'Bandi', description: '1 gang switch', model: 'BDS03G1'},
         ],
         fromZigbee: [fz.on_off],
         toZigbee: [tz.on_off],
@@ -1893,6 +1894,14 @@ const devices = [
         model: '3261030P7',
         vendor: 'Philips',
         description: 'Hue Being',
+        extend: hue.light_onoff_brightness_colortemp,
+        ota: ota.zigbeeOTA,
+    },
+    {
+        zigbeeModel: ['LTP008'],
+        model: '4098430P7',
+        vendor: 'Philips',
+        description: 'Hue Being Pendant',
         extend: hue.light_onoff_brightness_colortemp,
         ota: ota.zigbeeOTA,
     },
@@ -5480,7 +5489,7 @@ const devices = [
 
     // Ninja Blocks
     {
-        zigbeeModel: ['Ninja Smart plug'],
+        zigbeeModel: ['Ninja Smart Plug'],
         model: 'Z809AF',
         vendor: 'Ninja Blocks',
         description: 'Zigbee smart plug with power meter',
