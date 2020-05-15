@@ -3587,6 +3587,13 @@ const devices = [
         extend: generic.light_onoff_brightness,
     },
     {
+        zigbeeModel: ['Daylight'],
+        model: 'PQC19-DY01',
+        vendor: 'GE',
+        description: 'Link smart LED light bulb, A19/BR30 cold white (5000K)',
+        extend: generic.light_onoff_brightness,
+    },
+    {
         zigbeeModel: ['45852'],
         model: '45852GE',
         vendor: 'GE',
@@ -4825,17 +4832,19 @@ const devices = [
         vendor: 'SmartThings',
         description: 'Outlet with power meter',
         supports: 'on/off, power measurement',
-        fromZigbee: [fz.on_off, fz.electrical_measurement_power],
+        fromZigbee: [fz.on_off, fz.electrical_measurement_power, fz.metering_power],
         toZigbee: [tz.on_off],
-        meta: {configureKey: 2},
+        meta: {configureKey: 3},
         configure: async (device, coordinatorEndpoint) => {
             const endpoint = device.getEndpoint(1);
-            await bind(endpoint, coordinatorEndpoint, ['genOnOff', 'haElectricalMeasurement']);
+            await bind(endpoint, coordinatorEndpoint, ['genOnOff', 'haElectricalMeasurement', 'seMetering']);
             await configureReporting.onOff(endpoint);
             await readEletricalMeasurementPowerConverterAttributes(endpoint);
             await configureReporting.activePower(endpoint);
             await configureReporting.rmsCurrent(endpoint);
             await configureReporting.rmsVoltage(endpoint);
+            await readMeteringPowerConverterAttributes(endpoint);
+            await configureReporting.currentSummDelivered(endpoint);
         },
     },
     {
