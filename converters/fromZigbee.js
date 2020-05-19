@@ -510,6 +510,10 @@ const converters = {
         },
     },
     metering_power: {
+        /**
+         * When using this converter also add the following to the configure method of the device:
+         * await readMeteringPowerConverterAttributes(endpoint);
+         */
         cluster: 'seMetering',
         type: ['attributeReport', 'readResponse'],
         convert: (model, msg, publish, options, meta) => {
@@ -1773,6 +1777,13 @@ const converters = {
             }
         },
     },
+    curtain_position_analog_output: {
+        cluster: 'genAnalogOutput',
+        type: ['attributeReport', 'readResponse'],
+        convert: (model, msg, publish, options, meta) => {
+            return {position: precisionRound(msg.data['presentValue'], 2)};
+        },
+    },
     ZNCLDJ11LM_ZNCLDJ12LM_curtain_analog_output: {
         cluster: 'genAnalogOutput',
         type: ['attributeReport', 'readResponse'],
@@ -2398,6 +2409,20 @@ const converters = {
                 contact: !(zoneStatus & 1), // Bit 1 = Contact
                 // Bit 5 = Currently always set?
             };
+        },
+    },
+    SE21_action: {
+        cluster: 'ssIasZone',
+        type: 'commandStatusChangeNotification',
+        convert: (model, msg, publish, options, meta) => {
+            const buttonStates = {
+                0: 'off',
+                1: 'single',
+                2: 'double',
+                3: 'hold',
+            };
+
+            return {action: buttonStates[msg.data.zonestatus]};
         },
     },
     st_button_state: {
@@ -3907,6 +3932,24 @@ const converters = {
                 current: precisionRound(power/230, 2),
                 action: msg.data['41367'] === 1 ? 'hold' : 'release',
             };
+        },
+    },
+    diyruz_freepad_clicks: {
+        cluster: 'genMultistateInput',
+        type: ['readResponse', 'attributeReport'],
+        convert: (model, msg, publish, options, meta) => {
+            const button = getKey(model.endpoint(msg.device), msg.endpoint.ID);
+            const lookup = {
+                0: 'hold',
+                1: 'single',
+                2: 'double',
+                3: 'triple',
+                4: 'quadruple',
+                255: 'release',
+            };
+            const clicks = msg.data['presentValue'];
+            const action = lookup[clicks] ? lookup[clicks] : `many_${clicks}`;
+            return {action: `${button}_${action}`};
         },
     },
     aqara_opple_report: {

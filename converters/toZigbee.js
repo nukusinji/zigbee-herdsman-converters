@@ -352,7 +352,6 @@ const converters = {
 
                     const level = state === 'off' ? 0 :
                         (store[entity.deviceIeeeAddress] ? store[entity.deviceIeeeAddress].brightness : 254);
-                    if (state === 'on') delete store[entity.deviceIeeeAddress];
 
                     const payload = {level, transtime: transition.time};
                     await entity.command('genLevelCtrl', 'moveToLevelWithOnOff', payload, getOptions(meta.mapped));
@@ -372,7 +371,7 @@ const converters = {
                          * https://github.com/Koenkk/zigbee-herdsman-converters/issues/1073
                          */
                         const brightness = store[entity.deviceIeeeAddress].brightness;
-                        delete store[entity.deviceIeeeAddress];
+                        store[entity.deviceIeeeAddress].turnedOffWithTransition = false;
                         await entity.command(
                             'genLevelCtrl',
                             'moveToLevelWithOnOff',
@@ -410,6 +409,7 @@ const converters = {
                     brightness = Math.round(Number(message.brightness_percent) * 2.55).toString();
                 }
                 brightness = Math.min(254, brightness);
+                store[entity.deviceIeeeAddress] = {...store[entity.deviceIeeeAddress], brightness};
                 await entity.command(
                     'genLevelCtrl',
                     'moveToLevelWithOnOff',
@@ -2187,6 +2187,34 @@ const converters = {
                 }
             }
         },
+    },
+    diyruz_freepad_on_off_config: {
+        key: ['switch_type', 'switch_actions'],
+        convertSet: async (entity, key, value, meta) => {
+            const switchTypesLookup = {
+                toggle: 0x00,
+                momentary: 0x01,
+                multifunction: 0x02,
+            };
+            const switchActionsLookup = {
+                on: 0x00,
+                off: 0x01,
+                toggle: 0x02,
+            };
+
+            const payloads = {
+                switch_type: {'switchType': switchTypesLookup[value] || value},
+                switch_actions: {'switchActions': switchActionsLookup[value] || value},
+            };
+
+            await entity.write('genOnOffSwitchCfg', payloads[key]);
+        },
+    },
+    // Not a converter, can be used by tests to clear the store.
+    __clearStore__: () => {
+        for (const key of Object.keys(store)) {
+            delete store[key];
+        }
     },
 };
 
