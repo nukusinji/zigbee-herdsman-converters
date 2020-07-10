@@ -1,4 +1,5 @@
 const upgradeFileIdentifier = Buffer.from([0x1E, 0xF1, 0xEE, 0x0B]);
+const HttpsProxyAgent = require('https-proxy-agent');
 const assert = require('assert');
 const maxTimeout = 2147483647; // +- 24 days
 const imageBlockResponseDelay = 250;
@@ -192,8 +193,8 @@ async function updateToLatest(device, logger, onProgress, getNewImage) {
 
     return new Promise((resolve, reject) => {
         const answerNextImageBlockOrPageRequest = () => {
-            const imageBlockRequest = endpoint.waitForCommand('genOta', 'imageBlockRequest', null, 60000);
-            const imagePageRequest = endpoint.waitForCommand('genOta', 'imagePageRequest', null, 60000);
+            const imageBlockRequest = endpoint.waitForCommand('genOta', 'imageBlockRequest', null, 150000);
+            const imagePageRequest = endpoint.waitForCommand('genOta', 'imagePageRequest', null, 150000);
             waiters.imageBlockOrPageRequest = {
                 promise: Promise.race([imageBlockRequest.promise, imagePageRequest.promise]),
                 cancel: () => {
@@ -312,9 +313,24 @@ async function updateToLatest(device, logger, onProgress, getNewImage) {
     });
 }
 
+function getAxios() {
+    let config = {};
+    const proxy = process.env.HTTPS_PROXY;
+    if (proxy) {
+        config = {
+            proxy: false,
+            httpsAgent: new HttpsProxyAgent(proxy),
+        };
+    }
+
+    const axios = require('axios').create(config);
+    return axios;
+}
+
 module.exports = {
     upgradeFileIdentifier,
     isUpdateAvailable,
     parseImage,
     updateToLatest,
+    getAxios,
 };

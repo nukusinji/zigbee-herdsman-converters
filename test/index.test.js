@@ -147,7 +147,7 @@ describe('index.js', () => {
             }
 
             if (device.meta) {
-                containsOnly(['configureKey', 'multiEndpoint', 'applyRedFix', 'disableDefaultResponse', 'enhancedHue', 'timeout'], Object.keys(device.meta));
+                containsOnly(['configureKey', 'multiEndpoint', 'applyRedFix', 'disableDefaultResponse', 'enhancedHue', 'timeout', 'supportsHueAndSaturation'], Object.keys(device.meta));
             }
 
             if (device.zigbeeModel) {
@@ -156,5 +156,19 @@ describe('index.js', () => {
 
             foundModels.push(device.model);
         });
+    });
+    it('Verify addDeviceDefinition', () => {
+        const mockZigbeeModel = 'my-mock-device';
+        const mockDevice = {
+            zigbeeModel: [mockZigbeeModel],
+            model: 'mock-model'
+        };
+        const undefinedDevice = index.findByZigbeeModel(mockDevice.model);
+        expect(undefinedDevice).toBeUndefined();
+        const beforeAdditionDeviceCount = index.devices.length;
+        index.addDeviceDefinition(mockDevice);
+        expect(beforeAdditionDeviceCount + 1).toBe(index.devices.length);
+        const device = index.findByZigbeeModel(mockZigbeeModel);
+        expect(device.model).toBe(mockDevice.model);
     });
 });

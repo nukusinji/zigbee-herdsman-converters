@@ -13,14 +13,19 @@ function arrayEquals(as, bs) {
     return true;
 }
 
-for (const device of devices) {
+function addToLookupMaps(device) {
     if (device.hasOwnProperty('fingerprint')) {
         withFingerprint.push(device);
-    } else {
+    }
+
+    if (device.hasOwnProperty('zigbeeModel')) {
         for (const zigbeeModel of device.zigbeeModel) {
             byZigbeeModel.set(zigbeeModel.toLowerCase(), device);
         }
     }
+}
+for (const device of devices) {
+    addToLookupMaps(device);
 }
 
 function findByZigbeeModel(model) {
@@ -90,12 +95,19 @@ function fingerprintMatch(fingerprint, device) {
     return match;
 }
 
+
+function addDeviceDefinition(device) {
+    devices.push(device);
+    addToLookupMaps(device);
+}
+
 module.exports = {
     devices,
     findByZigbeeModel,
     findByDevice,
     toZigbeeConverters: toZigbee,
     fromZigbeeConverters: fromZigbee,
+    addDeviceDefinition,
     // Can be used to handle events for devices which are not fully paired yet (no modelID).
     // Example usecase: https://github.com/Koenkk/zigbee2mqtt/issues/2399#issuecomment-570583325
     onEvent: async (type, data, device) => {
