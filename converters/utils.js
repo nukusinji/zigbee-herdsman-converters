@@ -154,9 +154,33 @@ function hexToRgb(hex) {
     return {r: r, g: g, b: b};
 }
 
+/**
+ * interpolates hue value based on correction map through ranged linear interpolation
+ * @param {Number} hue hue to be corrected
+ * @param {Array} correctionMap array of hueIn -> hueOut mappings; example: [ {"in": 20, "out": 25}, {"in": 109, "out": 104}]
+ * @return {Number} corrected hue value
+ */
+function interpolateHue(hue, correctionMap) {
+    if (correctionMap.length < 2) return hue;
+
+    // retain immutablity
+    const clonedCorrectionMap = [...correctionMap];
+
+    // reverse sort calibration map and find left edge
+    clonedCorrectionMap.sort((a, b) => b.in - a.in);
+    const correctionLeft = clonedCorrectionMap.find((m) => m.in <= hue) || {'in': 0, 'out': 0};
+
+    // sort calibration map and find right edge
+    clonedCorrectionMap.sort((a, b) => a.in - b.in);
+    const correctionRight = clonedCorrectionMap.find((m) => m.in > hue) || {'in': 359, 'out': 359};
+
+    const ratio = 1 - (correctionRight.in - hue) / (correctionRight.in - correctionLeft.in);
+    return Math.round(correctionLeft.out + ratio * (correctionRight.out - correctionLeft.out));
+}
+
 function getKeyByValue(object, value, fallback) {
     const key = Object.keys(object).find((k) => object[k] === value);
-    return key != null ? Number(key) : (fallback || 0);
+    return key != null ? Number(key) : fallback;
 }
 
 function hasEndpoints(device, endpoints) {
@@ -167,6 +191,10 @@ function hasEndpoints(device, endpoints) {
         }
     }
     return true;
+}
+
+function isInRange(min, max, value) {
+    return value >= min && value <= max;
 }
 
 const getRandomInt = (min, max) =>
@@ -205,19 +233,60 @@ const replaceInArray = (arr, oldElements, newElements) => {
     return clone;
 };
 
+async function getDoorLockPinCode(entity, user, options = null) {
+    await entity.command(
+        'closuresDoorLock',
+        'getPinCode',
+        {
+            'userid': user,
+        },
+        options | {});
+}
+
+// groupStrategy: allEqual: return only if all members in the groups have the same meta property value.
+//                first: return the first property
+function getMetaValue(entity, definition, key, groupStrategy='first') {
+    if (entity.constructor.name === 'Group' && entity.members.length > 0) {
+        const values = [];
+        for (const memberMeta of definition) {
+            if (memberMeta.meta && memberMeta.meta.hasOwnProperty(key)) {
+                if (groupStrategy === 'first') {
+                    return memberMeta.meta[key];
+                }
+
+                values.push(memberMeta.meta[key]);
+            } else {
+                values.push(undefined);
+            }
+        }
+
+        if (groupStrategy === 'allEqual' && (new Set(values)).size === 1) {
+            return values[0];
+        }
+    } else if (definition && definition.meta && definition.meta.hasOwnProperty(key)) {
+        return definition.meta[key];
+    }
+
+    return undefined;
+}
+
 module.exports = {
     rgbToXY,
     hexToXY,
     hexToRgb,
     hslToHSV,
     getKeyByValue,
+    interpolateHue,
     hasEndpoints,
     miredsToXY,
     xyToMireds,
     gammaCorrectHSV,
     gammaCorrectRGB,
     getRandomInt,
+    isInRange,
     convertMultiByteNumberPayloadToSingleDecimalNumber,
     convertDecimalValueTo2ByteHexArray,
     replaceInArray,
+    getDoorLockPinCode,
+    getMetaValue,
 };

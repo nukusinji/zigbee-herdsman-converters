@@ -12,37 +12,37 @@ function containsOnly(array1, array2){
 }
 
 describe('index.js', () => {
-    it('Find device by model ID', () => {
+    it('Legacy: Find by zigbeeModel', () => {
         const device = index.findByZigbeeModel('WaterSensor-N');
         expect(device.model).toBe('HS1WL/HS3WL')
     });
 
-    it('Find device by model ID with strange characters 1', () => {
+    it('Legacy: Find by zigbeeModel with strange characters 1', () => {
         const device = index.findByZigbeeModel('lumi.remote.b1acn01\u0000\u0000\u0000\u0000\u0000\u0000');
         expect(device.model).toBe('WXKG11LM')
     });
 
-    it('Find device by model ID with strange characters 2', () => {
+    it('Legacy: Find by zigbeeModel with strange characters 2', () => {
         const device = index.findByZigbeeModel('lumi.sensor_86sw1\u0000lu');
         expect(device.model).toBe('WXKG03LM')
     });
 
-    it('Find device by model ID with strange characters 3', () => {
+    it('Legacy: Find by zigbeeModel with strange characters 3', () => {
         const device = index.findByZigbeeModel('lumi.sensor_86sw1');
         expect(device.model).toBe('WXKG03LM')
     });
 
-    it('Find device by model ID without strange characters', () => {
+    it('Legacy: Find by zigbeeModel without strange characters', () => {
         const device = index.findByZigbeeModel('lumi.sensor_switch.aq2\u0000\u0000\u0000\u0000\u0000\u0000');
         expect(device.model).toBe('WXKG11LM')
     });
 
-    it('Find device by model ID null', () => {
+    it('Legacy: Find by zigbeeModel with model ID null', () => {
         const device = index.findByZigbeeModel(null);
         expect(device).toBe(null)
     });
 
-    it('Find device by fingerprint', () => {
+    it('Find by device where modelID is null', () => {
         const endpoints = [
             {ID: 230, profileID: 49413, deviceID: 1, inputClusters: [], outputClusters: []},
             {ID: 232, profileID: 49413, deviceID: 1, inputClusters: [], outputClusters: []},
@@ -50,12 +50,113 @@ describe('index.js', () => {
         const device = {
             type: 'Router',
             manufacturerID: 4126,
+            modelID: undefined,
             endpoints,
             getEndpoint: (ID) => endpoints.find((e) => e.ID === ID),
         };
 
         const definition = index.findByDevice(device);
         expect(definition.model).toBe('XBee');
+    });
+
+    it('Find by device shouldn\'t match when modelID is null and there is no fingerprint match', () => {
+        const endpoints = [
+            {ID: 1, profileID: undefined, deviceID: undefined, inputClusters: [], outputClusters: []},
+        ];
+        const device = {
+            type: undefined,
+            manufacturerID: undefined,
+            modelID: undefined,
+            endpoints,
+            getEndpoint: (ID) => endpoints.find((e) => e.ID === ID),
+        };
+
+        const definition = index.findByDevice(device);
+        expect(definition).toBeNull();
+    });
+
+    it('Find by device when device has modelID should match', () => {
+        const endpoints = [
+            {ID: 1, profileID: undefined, deviceID: undefined, inputClusters: [], outputClusters: []},
+        ];
+        const device = {
+            type: undefined,
+            manufacturerID: undefined,
+            modelID: "lumi.sensor_motion",
+            endpoints,
+            getEndpoint: (ID) => endpoints.find((e) => e.ID === ID),
+        };
+
+        const definition = index.findByDevice(device);
+        expect(definition.model).toBe("RTCGQ01LM");
+    });
+
+    it('Find by device should prefer fingerprint match over zigbeeModel', () => {
+        const mullerEndpoints = [
+            {ID: 1, profileID: 49246, deviceID: 544, inputClusters: [0, 3, 4, 5, 6, 8, 768, 2821, 4096], outputClusters: [25]},
+            {ID: 242, profileID: 41440, deviceID: 102, inputClusters: [33], outputClusters: [33]},
+        ];
+        const muller = {
+            type: 'Router',
+            manufacturerID: 4635,
+            manufacturerName: 'MLI',
+            modelID: 'CCT Lighting',
+            powerSource: 'Mains (single phase)',
+            endpoints: mullerEndpoints,
+            getEndpoint: (ID) => mullerEndpoints.find((e) => e.ID === ID),
+        };
+
+        const sunricher = {
+            // Mock, not the actual fingerprint.
+            type: 'Router',
+            manufacturerID: 9999,
+            manufacturerName: 'SunRicher',
+            modelID: 'CCT Lighting',
+            powerSource: 'Mains (single phase)',
+            endpoints: [],
+            getEndpoint: (ID) => null,
+        };
+
+        expect(index.findByDevice(sunricher).model).toBe('ZG192910-4');
+        expect(index.findByDevice(muller).model).toBe('404031');
+    });
+
+    it('Find by device when fingerprint has zigbeeModel of other definition', () => {
+        // https://github.com/Koenkk/zigbee-herdsman-converters/issues/1449
+        const endpoints = [
+            {ID: 1, profileID: 260, deviceID: 1026, inputClusters: [0,3,1280,1], outputClusters: [3]},
+        ];
+        const device = {
+            type: 'EndDevice',
+            manufacturerID: 0,
+            manufacturerName: 'eWeLink',
+            modelID: 'TH01',
+            powerSource: 'Battery',
+            endpoints: endpoints,
+            getEndpoint: (ID) => endpoints.find((e) => e.ID === ID),
+        };
+
+        const definition = index.findByDevice(device);
+        expect(definition.model).toBe("SNZB-04");
+    });
+
+    it('Find by device when fingerprint has zigbeeModel of other definition shouldn\'t match when fingerprint doesn\t match', () => {
+        // https://github.com/Koenkk/zigbee-herdsman-converters/issues/1449
+        const endpoints = [
+            {ID: 1, profileID: 260, deviceID: 770, inputClusters: [0,3,1026,1029,1], outputClusters: [3]},
+        ];
+        const device = {
+            type: 'EndDevice',
+            manufacturerID: 0,
+            manufacturerName: 'eWeLink',
+            modelID: 'TH01',
+            powerSource: 'Battery',
+            endpoints: endpoints,
+            getEndpoint: (ID) => endpoints.find((e) => e.ID === ID),
+        };
+
+        const definition = index.findByDevice(device);
+        expect(definition.model).toBe("SNZB-02");
     });
 
     it('Verify devices.js definitions', () => {
@@ -82,6 +183,7 @@ describe('index.js', () => {
                 throw new Error(`'${device.model}' has no zigbeeModel or fingerprint`);
             }
 
+            expect(device.fromZigbee).not.toContain(undefined);
             expect(device.fromZigbee.length).toBe(new Set(device.fromZigbee).size)
 
             // Verify fromConverters
@@ -147,7 +249,7 @@ describe('index.js', () => {
             }
 
             if (device.meta) {
-                containsOnly(['configureKey', 'multiEndpoint', 'applyRedFix', 'disableDefaultResponse', 'enhancedHue', 'timeout', 'supportsHueAndSaturation'], Object.keys(device.meta));
+                containsOnly(['disableActionGroup', 'configureKey', 'multiEndpoint', 'applyRedFix', 'disableDefaultResponse', 'enhancedHue', 'timeout', 'supportsHueAndSaturation', 'battery', 'coverInverted', 'turnsOffAtBrightness1', 'pinCodeCount', 'tuyaThermostatSystemMode', 'tuyaThermostatPreset', 'commandArmIncludeTransaction'], Object.keys(device.meta));
             }
 
             if (device.zigbeeModel) {
@@ -157,6 +259,7 @@ describe('index.js', () => {
             foundModels.push(device.model);
         });
     });
+
     it('Verify addDeviceDefinition', () => {
         const mockZigbeeModel = 'my-mock-device';
         const mockDevice = {
@@ -164,7 +267,7 @@ describe('index.js', () => {
             model: 'mock-model'
         };
         const undefinedDevice = index.findByZigbeeModel(mockDevice.model);
-        expect(undefinedDevice).toBeUndefined();
+        expect(undefinedDevice).toBeNull();
         const beforeAdditionDeviceCount = index.devices.length;
         index.addDeviceDefinition(mockDevice);
         expect(beforeAdditionDeviceCount + 1).toBe(index.devices.length);
