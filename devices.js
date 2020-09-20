@@ -56,6 +56,18 @@ const readMeteringPowerConverterAttributes = async (endpoint) => {
     await endpoint.read('seMetering', ['multiplier', 'divisor']);
 };
 
+const writeCurrentTime = async (endpoint) => {
+    const OneJanuary2000 = new Date('January 01, 2000 00:00:00 UTC+00:00').getTime();
+
+    const time = Math.round(((new Date()).getTime() - OneJanuary2000) / 1000);
+    const values = {
+        timeStatus: 3, // Time-master + synchronised
+        time: time,
+        timeZone: ((new Date()).getTimezoneOffset() * -1) * 60,
+    };
+    endpoint.write('genTime', values);
+};
+
 const configureReportingPayload = (attribute, min, max, change, overrides) => {
     const payload = {
         attribute: attribute,
@@ -375,6 +387,7 @@ const livolo = {
         }
     },
 };
+
 
 const pincodeLock = {
     readPinCodeAfterProgramming: async (type, data, device) => {
@@ -7642,6 +7655,22 @@ const devices = [
         toZigbee: [],
     },
     {
+        fingerprint: [{modelID: 'DoorSensor-N-3.0', manufacturerName: 'HEIMAN'}],
+        model: 'HS3DS',
+        vendor: 'HEIMAN',
+        description: 'Door sensor',
+        supports: 'contact',
+        fromZigbee: [fz.ias_contact_alarm_1, fz.battery],
+        toZigbee: [],
+        meta: {configureKey: 1},
+        configure: async (device, coordinatorEndpoint) => {
+            const endpoint = device.getEndpoint(1);
+            await bind(endpoint, coordinatorEndpoint, ['genPowerCfg']);
+            await configureReporting.batteryPercentageRemaining(endpoint, {min: repInterval.MINUTES_5, max: repInterval.HOUR});
+            await endpoint.read('genPowerCfg', ['batteryPercentageRemaining']);
+        },
+    },
+    {
         zigbeeModel: ['WaterSensor-N'],
         model: 'HS1WL/HS3WL',
         vendor: 'HEIMAN',
@@ -7659,6 +7688,22 @@ const devices = [
         fromZigbee: [fz.ias_water_leak_alarm_1],
         toZigbee: [],
     },
+    {
+        fingerprint: [{modelID: 'WaterSensor-N-3.0', manufacturerName: 'HEIMAN'}],
+        model: 'HS1WL-N',
+        vendor: 'HEIMAN',
+        description: 'Water leakage sensor',
+        supports: 'water leak',
+        fromZigbee: [fz.ias_water_leak_alarm_1, fz.battery],
+        toZigbee: [],
+        meta: {configureKey: 1},
+        configure: async (device, coordinatorEndpoint) => {
+            const endpoint = device.getEndpoint(1);
+            await bind(endpoint, coordinatorEndpoint, ['genPowerCfg']);
+            await configureReporting.batteryPercentageRemaining(endpoint, {min: repInterval.MINUTES_5, max: repInterval.HOUR});
+            await endpoint.read('genPowerCfg', ['batteryPercentageRemaining']);
+        },
+    },
     // Removed support due to:
     // - https://github.com/Koenkk/zigbee2mqtt/issues/2750
     // - https://github.com/Koenkk/zigbee2mqtt/issues/1957
@@ -7674,6 +7719,22 @@ const devices = [
     //     ],
     //     toZigbee: [],
     // },
+    {
+        fingerprint: [{modelID: 'RC-N', manufacturerName: 'HEIMAN'}],
+        model: 'HS1RC-N',
+        vendor: 'HEIMAN',
+        description: 'Smart remote controller',
+        supports: 'action',
+        fromZigbee: [fz.battery, fz.heiman_smart_controller_armmode, fz.command_emergency],
+        toZigbee: [],
+        meta: {configureKey: 1},
+        configure: async (device, coordinatorEndpoint) => {
+            const endpoint = device.getEndpoint(1);
+            await bind(endpoint, coordinatorEndpoint, ['genPowerCfg']);
+            await configureReporting.batteryPercentageRemaining(endpoint, {min: repInterval.MINUTES_5, max: repInterval.HOUR});
+            await endpoint.read('genPowerCfg', ['batteryPercentageRemaining']);
+        },
+    },
     {
         zigbeeModel: ['COSensor-EM', 'COSensor-N'],
         model: 'HS1CA-E',
@@ -7755,6 +7816,27 @@ const devices = [
         },
     },
     {
+        fingerprint: [{modelID: 'HT-N', manufacturerName: 'HEIMAN'}],
+        model: 'HS1HT-N',
+        vendor: 'HEIMAN',
+        description: 'Smart temperature & humidity Sensor',
+        supports: 'temperature and humidity',
+        fromZigbee: [fz.temperature, fz.humidity, fz.battery],
+        toZigbee: [],
+        meta: {configureKey: 1},
+        configure: async (device, coordinatorEndpoint) => {
+            const endpoint1 = device.getEndpoint(1);
+            await bind(endpoint1, coordinatorEndpoint, ['msTemperatureMeasurement', 'genPowerCfg']);
+            await configureReporting.temperature(endpoint1);
+            await configureReporting.batteryPercentageRemaining(endpoint1, {min: repInterval.MINUTES_5, max: repInterval.HOUR});
+            await endpoint1.read('genPowerCfg', ['batteryPercentageRemaining']);
+
+            const endpoint2 = device.getEndpoint(2);
+            await bind(endpoint2, coordinatorEndpoint, ['msRelativeHumidity']);
+            await configureReporting.humidity(endpoint2);
+        },
+    },
+    {
         zigbeeModel: ['SKHMP30-I1'],
         model: 'SKHMP30-I1',
         description: 'Smart metering plug',
@@ -7819,13 +7901,20 @@ const devices = [
         },
     },
     {
-        zigbeeModel: ['SOS-EM'],
-        model: 'HS1EB',
+        fingerprint: [{modelID: 'SOS-EM', manufacturerName: 'HEIMAN'}],
+        model: 'HS1EB/HS1EB-E',
         vendor: 'HEIMAN',
         description: 'Smart emergency button',
-        supports: 'click',
-        fromZigbee: [fz.command_status_change_notification_action, fz.legacy_st_button_state],
+        supports: 'action',
+        fromZigbee: [fz.command_status_change_notification_action, fz.legacy_st_button_state, fz.battery],
         toZigbee: [],
+        meta: {configureKey: 1},
+        configure: async (device, coordinatorEndpoint) => {
+            const endpoint = device.getEndpoint(1);
+            await bind(endpoint, coordinatorEndpoint, ['genPowerCfg']);
+            await configureReporting.batteryPercentageRemaining(endpoint, {min: repInterval.MINUTES_5, max: repInterval.HOUR});
+            await endpoint.read('genPowerCfg', ['batteryPercentageRemaining']);
+        },
     },
     {
         zigbeeModel: ['GASSensor-EM'],
@@ -7853,6 +7942,72 @@ const devices = [
             await bind(endpoint, coordinatorEndpoint, ['genPowerCfg']);
             await configureReporting.batteryPercentageRemaining(endpoint, {min: repInterval.MINUTES_5, max: repInterval.HOUR});
             await endpoint.read('genPowerCfg', ['batteryPercentageRemaining']);
+        },
+    },
+    {
+        fingerprint: [{modelID: 'HS2AQ-EM', manufacturerName: 'HEIMAN'}],
+        model: 'HS2AQ-EM',
+        vendor: 'HEIMAN',
+        description: 'Air quality monitor',
+        supports: 'air quality',
+        fromZigbee: [
+            fz.battery, fz.temperature, fz.humidity,
+            fz.heiman_pm25, fz.heiman_hcho, fz.heiman_air_quality,
+        ],
+        toZigbee: [],
+        meta: {configureKey: 1},
+        configure: async (device, coordinatorEndpoint) => {
+            const heiman = {
+                configureReporting: {
+                    pm25MeasuredValue: async (endpoint, overrides) => {
+                        const payload = configureReportingPayload('measuredValue', 0, repInterval.HOUR, 1, overrides);
+                        await endpoint.configureReporting('heimanSpecificPM25Measurement', payload);
+                    },
+                    formAldehydeMeasuredValue: async (endpoint, overrides) => {
+                        const payload = configureReportingPayload('measuredValue', 0, repInterval.HOUR, 1, overrides);
+                        await endpoint.configureReporting('heimanSpecificFormaldehydeMeasurement', payload);
+                    },
+                    batteryState: async (endpoint, overrides) => {
+                        const payload = configureReportingPayload('batteryState', 0, repInterval.HOUR, 1, overrides);
+                        await endpoint.configureReporting('heimanSpecificAirQuality', payload);
+                    },
+                    pm10measuredValue: async (endpoint, overrides) => {
+                        const payload = configureReportingPayload('pm10measuredValue', 0, repInterval.HOUR, 1, overrides);
+                        await endpoint.configureReporting('heimanSpecificAirQuality', payload);
+                    },
+                    tvocMeasuredValue: async (endpoint, overrides) => {
+                        const payload = configureReportingPayload('tvocMeasuredValue', 0, repInterval.HOUR, 1, overrides);
+                        await endpoint.configureReporting('heimanSpecificAirQuality', payload);
+                    },
+                    aqiMeasuredValue: async (endpoint, overrides) => {
+                        const payload = configureReportingPayload('aqiMeasuredValue', 0, repInterval.HOUR, 1, overrides);
+                        await endpoint.configureReporting('heimanSpecificAirQuality', payload);
+                    },
+                },
+            };
+
+            const endpoint = device.getEndpoint(1);
+            await bind(endpoint, coordinatorEndpoint, [
+                'genPowerCfg', 'genTime', 'msTemperatureMeasurement', 'msRelativeHumidity',
+                'heimanSpecificPM25Measurement', 'heimanSpecificFormaldehydeMeasurement', 'heimanSpecificAirQuality',
+            ]);
+
+            await configureReporting.batteryPercentageRemaining(endpoint);
+            await configureReporting.temperature(endpoint);
+            await configureReporting.humidity(endpoint);
+
+            await heiman.configureReporting.pm25MeasuredValue(endpoint);
+            await heiman.configureReporting.formAldehydeMeasuredValue(endpoint);
+            await heiman.configureReporting.batteryState(endpoint);
+            await heiman.configureReporting.pm10measuredValue(endpoint);
+            await heiman.configureReporting.tvocMeasuredValue(endpoint);
+            await heiman.configureReporting.aqiMeasuredValue(endpoint);
+
+            await endpoint.read('genPowerCfg', ['batteryPercentageRemaining']);
+
+            // Seems that it is bug in HEIMAN, device does not asks for the time with binding
+            // So, we need to write time during configure
+            await writeCurrentTime(endpoint);
         },
     },
 
@@ -10739,6 +10894,66 @@ const devices = [
             await bind(device.getEndpoint(1), coordinatorEndpoint, ['genOnOff']);
             await bind(device.getEndpoint(2), coordinatorEndpoint, ['genOnOff']);
             await bind(device.getEndpoint(3), coordinatorEndpoint, ['genOnOff']);
+        },
+    },
+    {
+        zigbeeModel: ['PM-S150-ZB'],
+        model: 'PM-S150-ZB',
+        vendor: 'Dawon DNS',
+        description: 'IOT smart switch 1 gang router without neutral wire',
+        supports: 'on/off',
+        fromZigbee: [fz.on_off],
+        toZigbee: [tz.on_off],
+    },
+    {
+        zigbeeModel: ['PM-S250-ZB'],
+        model: 'PM-S250-ZB',
+        vendor: 'Dawon DNS',
+        description: 'IOT smart switch 2 gang without neutral wire',
+        supports: 'on/off',
+        fromZigbee: [fz.on_off],
+        toZigbee: [tz.on_off],
+        endpoint: (device) => {
+            return {top: 1, bottom: 2};
+        },
+        meta: {configureKey: 1, multiEndpoint: true},
+        configure: async (device, coordinatorEndpoint) => {
+            await bind(device.getEndpoint(1), coordinatorEndpoint, ['genOnOff']);
+            await bind(device.getEndpoint(2), coordinatorEndpoint, ['genOnOff']);
+        },
+    },
+    {
+        zigbeeModel: ['PM-S350-ZB'],
+        model: 'PM-S350-ZB',
+        vendor: 'Dawon DNS',
+        description: 'IOT smart switch 3 gang without neutral wire',
+        supports: 'on/off',
+        fromZigbee: [fz.on_off],
+        toZigbee: [tz.on_off],
+        endpoint: (device) => {
+            return {top: 1, center: 2, bottom: 3};
+        },
+        meta: {configureKey: 1, multiEndpoint: true},
+        configure: async (device, coordinatorEndpoint) => {
+            await bind(device.getEndpoint(1), coordinatorEndpoint, ['genOnOff']);
+            await bind(device.getEndpoint(2), coordinatorEndpoint, ['genOnOff']);
+            await bind(device.getEndpoint(3), coordinatorEndpoint, ['genOnOff']);
+        },
+    },
+    {
+        zigbeeModel: ['PM-C150-ZB'],
+        model: 'PM-C150-ZB',
+        vendor: 'Dawon DNS',
+        description: 'IOT remote control smart buried-type 16A outlet',
+        supports: 'on/off, power and energy measurement',
+        fromZigbee: [fz.on_off, fz.metering_power],
+        toZigbee: [tz.on_off],
+        meta: {configureKey: 1},
+        configure: async (device, coordinatorEndpoint) => {
+            const endpoint = device.getEndpoint(1);
+            await bind(endpoint, coordinatorEndpoint, ['genOnOff', 'seMetering']);
+            await readMeteringPowerConverterAttributes(endpoint);
+            await configureReporting.instantaneousDemand(endpoint);
         },
     },
 
