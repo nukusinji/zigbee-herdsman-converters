@@ -2245,6 +2245,15 @@ const devices = [
         ota: ota.zigbeeOTA,
     },
     {
+        zigbeeModel: ['LTD011'],
+        model: '5110131H5',
+        vendor: 'Philips',
+        description: 'Garnea downlight',
+        meta: {turnsOffAtBrightness1: true},
+        extend: hue.light_onoff_brightness_colortemp,
+        ota: ota.zigbeeOTA,
+    },
+    {
         zigbeeModel: ['LWA010'],
         model: '929002335001',
         vendor: 'Philips',
@@ -9187,7 +9196,7 @@ const devices = [
 
     // Vimar
     {
-        zigbeeModel: ['2_Way_Switch_v1.0'],
+        zigbeeModel: ['2_Way_Switch_v1.0', 'On_Off_Switch_v1.0'],
         model: '14592.0',
         vendor: 'Vimar',
         description: '2-way switch IoT connected mechanism',
@@ -11513,7 +11522,7 @@ const devices = [
         },
     },
     {
-        zigbeeModel: ['MS01'],
+        zigbeeModel: ['MS01', 'MSO1'],
         model: 'SNZB-03',
         vendor: 'SONOFF',
         whiteLabel: [
@@ -12901,6 +12910,26 @@ const devices = [
         },
     },
 
+    // QMotion products - http://www.qmotionshades.com/
+    {
+        zigbeeModel: ['Rollershade QdR'],
+        model: 'QZR-ZIG2400',
+        vendor: 'Qmotion',
+        description: '5 channel remote',
+        supports: 'open, close, stop, position',
+        fromZigbee: [fz.identify, fz.cover_position_tilt],
+        toZigbee: [],
+    },
+    {
+        zigbeeModel: ['Honeycomb Internal Battery', 'Rollershade Internal Battery'],
+        model: 'HDM40PV620',
+        vendor: 'Qmotion',
+        description: 'Motorized roller blind',
+        supports: 'open, close, stop, position',
+        fromZigbee: [fz.identify],
+        toZigbee: [tz.cover_state, tz.cover_position_tilt],
+    },
+
     // Titan Products
     {
         zigbeeModel: ['TPZRCO2HT-Z3'],
@@ -12953,6 +12982,15 @@ const devices = [
     },
 ];
 
-module.exports = devices.map((device) =>
-    device.extend ? Object.assign({}, device.extend, device) : device,
-);
+
+module.exports = devices.map((device) => {
+    if (device.extend) {
+        device = Object.assign({}, device.extend, device);
+    }
+
+    if (device.toZigbee.length > 0) {
+        device.toZigbee.push(tz.scene_store, tz.scene_recall, tz.scene_add);
+    }
+
+    return device;
+});
