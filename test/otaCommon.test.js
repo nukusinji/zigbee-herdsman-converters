@@ -1,4 +1,4 @@
-const common = require("../ota/common");
+const common = require("../lib/ota/common");
 const otaImages = require("./stub/otaImages");
 
 describe("ota/common.js", () => {
@@ -6,6 +6,8 @@ describe("ota/common.js", () => {
         const start = otaImage.data.indexOf(common.upgradeFileIdentifier);
 
         const image = common.parseImage(otaImage.data.slice(start));
+
+        expect(common.validateImageData(image)).toBeUndefined();
 
         expect(image.header.otaHeaderFieldControl).toBe(otaImage.headerField);
 
