@@ -623,20 +623,6 @@ const converters = {
             }
         },
     },
-    on_off_skip_duplicate_transaction_and_disable_default_response: {
-        cluster: 'genOnOff',
-        type: ['attributeReport', 'readResponse'],
-        convert: (model, msg, publish, options, meta) => {
-            if (msg.type === 'attributeReport') {
-                msg.meta.frameControl.disableDefaultResponse = true;
-            }
-
-            if (msg.data.hasOwnProperty('onOff') && !hasAlreadyProcessedMessage(msg)) {
-                const property = postfixWithEndpointName('state', msg, model);
-                return {[property]: msg.data['onOff'] === 1 ? 'ON' : 'OFF'};
-            }
-        },
-    },
     power_on_behavior: {
         cluster: 'genOnOff',
         type: ['attributeReport', 'readResponse'],
@@ -646,6 +632,17 @@ const converters = {
                 const property = postfixWithEndpointName('power_on_behavior', msg, model);
                 return {[property]: lookup[msg.data['startUpOnOff']]};
             }
+        },
+    },
+    ias_no_alarm: {
+        cluster: 'ssIasZone',
+        type: 'attributeReport',
+        convert: (model, msg, publish, options, meta) => {
+            const zoneStatus = msg.data.zoneStatus;
+            return {
+                tamper: (zoneStatus & 1<<2) > 0,
+                battery_low: (zoneStatus & 1<<3) > 0,
+            };
         },
     },
     ias_water_leak_alarm_1: {
@@ -1331,9 +1328,34 @@ const converters = {
             return result;
         },
     },
+    checkin_presence: {
+        cluster: 'genPollCtrl',
+        type: ['commandCheckIn'],
+        convert: (model, msg, publish, options, meta) => {
+            const useOptionsTimeout = options && options.hasOwnProperty('presence_timeout');
+            const timeout = useOptionsTimeout ? options.presence_timeout : 100; // 100 seconds by default
+
+            // Stop existing timer because presence is detected and set a new one.
+            clearTimeout(globalStore.getValue(msg.endpoint, 'timer'));
+
+            const timer = setTimeout(() => publish({presence: false}), timeout * 1000);
+            globalStore.putValue(msg.endpoint, 'timer', timer);
+
+            return {presence: true};
+        },
+    },
     // #endregion
 
     // #region Non-generic converters
+    command_on_presence: {
+        cluster: 'genOnOff',
+        type: 'commandOn',
+        convert: (model, msg, publish, options, meta) => {
+            const payload1 = converters.checkin_presence.convert(model, msg, publish, options, meta);
+            const payload2 = converters.command_on.convert(model, msg, publish, options, meta);
+            return {...payload1, ...payload2};
+        },
+    },
     tuya_thermostat_weekly_schedule: {
         cluster: 'manuSpecificTuya',
         type: ['commandGetData', 'commandSetDataResponse'],
@@ -3654,7 +3676,7 @@ const converters = {
             if (['WXKG02LM_rev1', 'WXKG02LM_rev2', 'WXKG07LM'].includes(model.model)) mapping = {1: 'left', 2: 'right', 3: 'both'};
 
             // Maybe other QKBG also support release/hold?
-            const actionLookup = !isLegacyEnabled(options) && ['QBKG03LM', 'QBKG22LM', 'QBKG04LM'].includes(model.model) ?
+            const actionLookup = !isLegacyEnabled(options) && ['QBKG03LM', 'QBKG22LM', 'QBKG04LM', 'QBKG21LM'].includes(model.model) ?
                 {0: 'hold', 1: 'release'} : {0: 'single', 1: 'single'};
 
             // Dont' use postfixWithEndpointName here, endpoints don't match
@@ -5160,6 +5182,7 @@ const converters = {
             return {occupancy: (zoneStatus & 1<<2) > 0};
         },
     },
+
     // #endregion
 
     // #region Ignore converters (these message dont need parsing).
