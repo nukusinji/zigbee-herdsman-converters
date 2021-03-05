@@ -140,7 +140,8 @@ const converters = {
         convert: (model, msg, publish, options, meta) => {
             const result = {};
             if (msg.data.hasOwnProperty('keypadLockout')) {
-                result.keypad_lockout = msg.data['keypadLockout'] !== 0;
+                result.keypad_lockout = constants.keypadLockoutMode.includes(msg.data['keypadLockout']) ?
+                    constants.keypadLockoutMode[msg.data['keypadLockout']] : msg.data['keypadLockout'];
             }
             return result;
         },
@@ -517,6 +518,16 @@ const converters = {
                 if (msg.data.hasOwnProperty('enhancedCurrentHue')) {
                     result.color.hue = precisionRound(msg.data['enhancedCurrentHue'] / (65535 / 360), 1);
                 }
+            }
+
+            if (msg.data.hasOwnProperty('options')) {
+                /*
+                * Bit | Value & Summary
+                * --------------------------
+                * 0   | 0: Do not execute command if the On/Off cluster, OnOff attribute is 0x00 (FALSE)
+                *     | 1: Execute command if the On/Off cluster, OnOff attribute is 0x00 (FALSE)
+                */
+                result.color_options = {execute_if_off: ((msg.data.options & 1<<0) > 0)};
             }
 
             return result;
@@ -1534,17 +1545,17 @@ const converters = {
             case tuya.dataPoints.state: // Confirm opening/closing/stopping (triggered from Zigbee)
             case tuya.dataPoints.coverPosition: // Started moving to position (triggered from Zigbee)
             case tuya.dataPoints.coverChange: // Started moving (triggered by transmitter or pulling on curtain)
-                return {running: true};
             case tuya.dataPoints.coverArrived: { // Arrived at position
+                const running = dp === tuya.dataPoints.coverArrived ? false : true;
                 const invert = tuya.isCoverInverted(meta.device.manufacturerName) ? !options.invert_cover : options.invert_cover;
                 const position = invert ? 100 - (value & 0xFF) : (value & 0xFF);
 
                 if (position > 0 && position <= 100) {
-                    return {running: false, position: position, state: 'OPEN'};
+                    return {running, position, state: 'OPEN'};
                 } else if (position == 0) { // Report fully closed
-                    return {running: false, position: position, state: 'CLOSE'};
+                    return {running, position, state: 'CLOSE'};
                 } else {
-                    return {running: false}; // Not calibrated yet, no position is available
+                    return {running}; // Not calibrated yet, no position is available
                 }
             }
             case tuya.dataPoints.coverSpeed: // Cover is reporting its current speed setting
@@ -1595,6 +1606,7 @@ const converters = {
         cluster: 'ssIasZone',
         type: 'commandStatusChangeNotification',
         convert: (model, msg, publish, options, meta) => {
+            if (hasAlreadyProcessedMessage(msg)) return;
             const lookup = {1: 'pressed'};
             const zoneStatus = msg.data.zonestatus;
             return {
@@ -1845,8 +1857,11 @@ const converters = {
                 return {humidity_min: value};
             case tuya.dataPoints.neoMaxHumidity: // 0x026E [0,0,0,80] max alarm humidity
                 return {humidity_max: value};
-            case tuya.dataPoints.neoUnknown1: // 0x0465 [4]
-                break;
+            case tuya.dataPoints.neoPowerType: // 0x0465 [4]
+                return {
+                    power_type: {0: 'battery_full', 1: 'battery_high', 2: 'battery_medium', 3: 'battery_low', 4: 'usb'}[value],
+                    battery_low: value === 3,
+                };
             case tuya.dataPoints.neoMelody: // 0x0466 [5] Melody
                 return {melody: value};
             case tuya.dataPoints.neoUnknown3: // 0x0473 [0]
@@ -2119,8 +2134,12 @@ const converters = {
             const payload = {};
             const channel = msg.endpoint.ID;
             const name = `l${channel}`;
+            const endpoint = msg.endpoint;
             payload[name] = precisionRound(msg.data['presentValue'], 3);
-            if (msg.data.hasOwnProperty('description')) {
+            const cluster = 'genLevelCtrl';
+            if (endpoint && (endpoint.supportsInputCluster(cluster) || endpoint.supportsOutputCluster(cluster))) {
+                payload['brightness_' + name] = msg.data['presentValue'];
+            } else if (msg.data.hasOwnProperty('description')) {
                 const data1 = msg.data['description'];
                 if (data1) {
                     const data2 = data1.split(',');
@@ -2712,18 +2731,18 @@ const converters = {
             case tuya.dataPoints.moesSchedule:
                 return {
                     program: [
-                        {p1: value[0] + 'h:' + value[1] + 'm ' + value[2] + '°C'},
-                        {p2: value[3] + 'h:' + value[4] + 'm ' + value[5] + '°C'},
-                        {p3: value[6] + 'h:' + value[7] + 'm ' + value[8] + '°C'},
-                        {p4: value[9] + 'h:' + value[10] + 'm ' + value[11] + '°C'},
-                        {sa1: value[12] + 'h:' + value[13] + 'm ' + value[14] + '°C'},
-                        {sa2: value[15] + 'h:' + value[16] + 'm ' + value[17] + '°C'},
-                        {sa3: value[18] + 'h:' + value[19] + 'm ' + value[20] + '°C'},
-                        {sa4: value[21] + 'h:' + value[22] + 'm ' + value[23] + '°C'},
-                        {su1: value[24] + 'h:' + value[25] + 'm ' + value[26] + '°C'},
-                        {su2: value[27] + 'h:' + value[28] + 'm ' + value[29] + '°C'},
-                        {su3: value[30] + 'h:' + value[31] + 'm ' + value[32] + '°C'},
-                        {su4: value[33] + 'h:' + value[34] + 'm ' + value[35] + '°C'},
+                        {p1: value[0] + 'h:' + value[1] + 'm ' + value[2]/2 + '°C'},
+                        {p2: value[3] + 'h:' + value[4] + 'm ' + value[5]/2 + '°C'},
+                        {p3: value[6] + 'h:' + value[7] + 'm ' + value[8]/2 + '°C'},
+                        {p4: value[9] + 'h:' + value[10] + 'm ' + value[11]/2 + '°C'},
+                        {sa1: value[12] + 'h:' + value[13] + 'm ' + value[14]/2+ '°C'},
+                        {sa2: value[15] + 'h:' + value[16] + 'm ' + value[17]/2 + '°C'},
+                        {sa3: value[18] + 'h:' + value[19] + 'm ' + value[20]/2 + '°C'},
+                        {sa4: value[21] + 'h:' + value[22] + 'm ' + value[23]/2 + '°C'},
+                        {su1: value[24] + 'h:' + value[25] + 'm ' + value[26]/2 + '°C'},
+                        {su2: value[27] + 'h:' + value[28] + 'm ' + value[29]/2 + '°C'},
+                        {su3: value[30] + 'h:' + value[31] + 'm ' + value[32]/2 + '°C'},
+                        {su4: value[33] + 'h:' + value[34] + 'm ' + value[35]/2 + '°C'},
                     ],
                 };
             case tuya.dataPoints.state: // Thermostat on standby = OFF, running = ON
@@ -2736,8 +2755,8 @@ const converters = {
                 return {max_temperature_limit: value};
             case tuya.dataPoints.moesMaxTemp:
                 return {max_temperature: value};
-            case tuya.dataPoints.moesMinTemp:
-                return {min_temperature: value};
+            case tuya.dataPoints.moesDeadZoneTemp:
+                return {deadzone_temperature: value};
             case tuya.dataPoints.moesLocalTemp:
                 return {local_temperature: parseFloat((value / 10).toFixed(1))};
             case tuya.dataPoints.moesTempCalibration:
@@ -3405,7 +3424,23 @@ const converters = {
         cluster: 'manuSpecificSamsungAccelerometer',
         type: ['attributeReport', 'readResponse'],
         convert: (model, msg, publish, options, meta) => {
-            return {moving: msg.data['acceleration'] === 1 ? true : false};
+            const payload = {};
+            if (msg.data.hasOwnProperty('acceleration')) payload.moving = msg.data['acceleration'] === 1;
+
+            // eslint-disable-next-line
+            // https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/devicetypes/smartthings/smartsense-multi-sensor.src/smartsense-multi-sensor.groovy#L222
+            /*
+                The axes reported by the sensor are mapped differently in the SmartThings DTH.
+                Preserving that functionality here.
+                xyzResults.x = z
+                xyzResults.y = y
+                xyzResults.z = -x
+            */
+            if (msg.data.hasOwnProperty('z_axis')) payload.x_axis = msg.data['z_axis'];
+            if (msg.data.hasOwnProperty('y_axis')) payload.y_axis = msg.data['y_axis'];
+            if (msg.data.hasOwnProperty('x_axis')) payload.z_axis = - msg.data['x_axis'];
+
+            return payload;
         },
     },
     byun_smoke_false: {
@@ -4360,7 +4395,10 @@ const converters = {
         type: 'commandOnWithTimedOff',
         convert: (model, msg, publish, options, meta) => {
             if (msg.data.ctrlbits === 1) return;
-            const timeout = msg.data.ontime / 10;
+
+            const timeout = options && options.hasOwnProperty('occupancy_timeout') ?
+                options.occupancy_timeout : msg.data.ontime / 10;
+
             // Stop existing timer because motion is detected and set a new one.
             clearTimeout(globalStore.getValue(msg.endpoint, 'timer'));
 
@@ -5031,7 +5069,7 @@ const converters = {
         convert: (model, msg, publish, options, meta) => {
             const buttonLookup = {1: 'on', 2: 'up', 3: 'down', 4: 'off'};
             const button = buttonLookup[msg.data['button']];
-            const typeLookup = {0: 'press', 1: 'hold', 2: 'release', 3: 'release'};
+            const typeLookup = {0: 'press', 1: 'hold', 2: 'press_release', 3: 'hold_release'};
             const type = typeLookup[msg.data['type']];
             const payload = {action: `${button}_${type}`};
 

@@ -62,6 +62,17 @@ const converters = {
             await entity.read('genOnOff', ['startUpOnOff']);
         },
     },
+    light_color_options: {
+        key: ['color_options'],
+        convertSet: async (entity, key, value, meta) => {
+            const options = (value.hasOwnProperty('execute_if_off') && value.execute_if_off) ? 1 : 0;
+            await entity.write('lightingColorCtrl', {options}, utils.getOptions(meta.mapped, entity));
+            return {state: {'color_options': value}};
+        },
+        convertGet: async (entity, key, meta) => {
+            await entity.read('lightingColorCtrl', ['options']);
+        },
+    },
     lock: {
         key: ['state'],
         convertSet: async (entity, key, value, meta) => {
@@ -1152,6 +1163,10 @@ const converters = {
         convertSet: async (entity, key, value, meta) => {
             const keypadLockout = utils.getKey(constants.keypadLockoutMode, value, value, Number);
             await entity.write('hvacUserInterfaceCfg', {keypadLockout});
+            return {readAfterWriteTime: 250, state: {keypad_lockout: value}};
+        },
+        convertGet: async (entity, key, meta) => {
+            await entity.read('hvacUserInterfaceCfg', ['keypadLockout']);
         },
     },
     thermostat_temperature_setpoint_hold: {
@@ -1288,6 +1303,12 @@ const converters = {
         key: ['power'],
         convertGet: async (entity, key, meta) => {
             await entity.read('haElectricalMeasurement', ['activePower']);
+        },
+    },
+    metering_power: {
+        key: ['power'],
+        convertGet: async (entity, key, meta) => {
+            await entity.read('seMetering', ['instantaneousDemand']);
         },
     },
     // #endregion
@@ -1998,10 +2019,10 @@ const converters = {
             await tuya.sendDataPointValue(entity, tuya.dataPoints.moesHeatingSetpoint, value);
         },
     },
-    moes_thermostat_min_temperature: {
-        key: ['min_temperature'],
+    moes_thermostat_deadzone_temperature: {
+        key: ['deadzone_temperature'],
         convertSet: async (entity, key, value, meta) => {
-            await tuya.sendDataPointValue(entity, tuya.dataPoints.moesMinTemp, value);
+            await tuya.sendDataPointValue(entity, tuya.dataPoints.moesDeadZoneTemp, value);
         },
     },
     moes_thermostat_calibration: {
@@ -2151,7 +2172,8 @@ const converters = {
     tuya_dimmer_state: {
         key: ['state'],
         convertSet: async (entity, key, value, meta) => {
-            await tuya.sendDataPointBool(entity, tuya.dataPoints.state, value === 'ON');
+            // Always use same transid as tuya_dimmer_level (https://github.com/Koenkk/zigbee2mqtt/issues/6366)
+            await tuya.sendDataPointBool(entity, tuya.dataPoints.state, value === 'ON', 'setData', 1);
         },
     },
     tuya_dimmer_level: {
@@ -2189,7 +2211,8 @@ const converters = {
                     throw new Error('Dimmer brightness is out of range 0..255');
                 }
             }
-            await tuya.sendDataPointValue(entity, dp, newValue);
+            // Always use same transid as tuya_dimmer_state (https://github.com/Koenkk/zigbee2mqtt/issues/6366)
+            await tuya.sendDataPointValue(entity, dp, newValue, 'setData', 1);
         },
     },
     tuya_switch_state: {
@@ -2586,7 +2609,7 @@ const converters = {
         },
     },
     ptvo_switch_analog_input: {
-        key: ['l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'l7', 'l8'],
+        key: ['l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'l7', 'l8', 'l9', 'l10', 'l11', 'l12', 'l13', 'l14', 'l15', 'l16'],
         convertGet: async (entity, key, meta) => {
             const epId = parseInt(key.substr(1, 1));
             if ( utils.hasEndpoints(meta.device, [epId]) ) {
@@ -2631,6 +2654,16 @@ const converters = {
             }
             const cluster = 'genLevelCtrl';
             if (entity.supportsInputCluster(cluster) || entity.supportsOutputCluster(cluster)) {
+                const message = meta.message;
+
+                let brightness = undefined;
+                if (message.hasOwnProperty('brightness')) brightness = Number(message.brightness);
+                else if (message.hasOwnProperty('brightness_percent')) brightness = Math.round(Number(message.brightness_percent) * 2.55);
+
+                if ((brightness !== undefined) && (brightness === 0)) {
+                    message.state = 'off';
+                    message.brightness = 1;
+                }
                 return await converters.light_onoff_brightness.convertSet(entity, key, value, meta);
             } else {
                 throw new Error('LevelControl not supported on this endpoint.');
