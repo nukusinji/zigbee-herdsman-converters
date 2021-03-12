@@ -4384,7 +4384,7 @@ const converters = {
                 await tuya.sendDataPointBool(entity, tuya.dataPoints.hyState, value === 'ON');
                 break;
             case 'child_lock':
-                await tuya.sendDataPointBool(entity, tuya.dataPoints.hyChildLock, value === 'LOCKED');
+                await tuya.sendDataPointBool(entity, tuya.dataPoints.hyChildLock, value === 'LOCK');
                 break;
             case 'away_preset_days':
                 await tuya.sendDataPointValue(entity, tuya.dataPoints.hyAwayDays, value);
@@ -4499,6 +4499,23 @@ const converters = {
             const sens = {'high': 0, 'medium': 2, 'low': 6}[value];
             await entity.write('ssIasZone', {currentZoneSensitivityLevel: sens});
             return {state: {sensitivity: value}};
+        },
+    },
+    viessmann_window_open: {
+        key: ['window_open'],
+        convertGet: async (entity, key, meta) => {
+            await entity.read('hvacThermostat', ['viessmannCustom0'], {manufacturerCode: 0x1221});
+        },
+    },
+    dawondns_only_off: {
+        key: ['state'],
+        convertSet: async (entity, key, value, meta) => {
+            value = value.toLowerCase();
+            utils.validateValue(value, ['off']);
+            await entity.command('genOnOff', value, {}, utils.getOptions(meta.mapped, entity));
+        },
+        convertGet: async (entity, key, meta) => {
+            await entity.read('genOnOff', ['onOff']);
         },
     },
 
