@@ -228,6 +228,7 @@ const devices = [
         vendor: 'Xiaomi',
         description: 'Aqara smart LED bulb',
         extend: preset.xiaomi.light_onoff_brightness_colortemp(),
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.light.cwopcn02'],
@@ -235,6 +236,7 @@ const devices = [
         vendor: 'Xiaomi',
         description: 'Aqara Opple MX650',
         extend: preset.xiaomi.light_onoff_brightness_colortemp(),
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.light.cwopcn03'],
@@ -242,6 +244,7 @@ const devices = [
         vendor: 'Xiaomi',
         description: 'Aqara Opple MX480',
         extend: preset.xiaomi.light_onoff_brightness_colortemp(),
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.light.cwjwcn01'],
@@ -435,6 +438,7 @@ const devices = [
             device.type = 'EndDevice';
             device.save();
         },
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.ctrl_ln1.aq1', 'lumi.ctrl_ln1'],
@@ -450,6 +454,7 @@ const devices = [
             return {'system': 1};
         },
         onEvent: xiaomi.preventReset,
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.ctrl_neutral2'],
@@ -471,6 +476,7 @@ const devices = [
             device.type = 'EndDevice';
             device.save();
         },
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.ctrl_ln2.aq1', 'lumi.ctrl_ln2'],
@@ -489,6 +495,7 @@ const devices = [
             return {'left': 1, 'right': 2, 'system': 1};
         },
         onEvent: xiaomi.preventReset,
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.remote.b286acn02'],
@@ -544,6 +551,7 @@ const devices = [
             device.type = 'EndDevice';
             device.save();
         },
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.switch.l3acn3'],
@@ -570,6 +578,7 @@ const devices = [
             await reporting.onOff(device.getEndpoint(2));
             await reporting.onOff(device.getEndpoint(3));
         },
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.switch.n3acn3'],
@@ -627,6 +636,7 @@ const devices = [
             'hold_left', 'single_left', 'double_left', 'release_left', 'hold_right', 'single_right',
             'double_right', 'release_right', 'hold_both', 'single_both', 'double_both', 'release_both'])],
         onEvent: xiaomi.preventReset,
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.sens', 'lumi.sensor_ht'],
@@ -765,6 +775,7 @@ const devices = [
         fromZigbee: [fz.xiaomi_battery, fz.ias_water_leak_alarm_1],
         toZigbee: [],
         exposes: [e.battery(), e.water_leak(), e.battery_low(), e.tamper(), e.battery_voltage()],
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.sensor_cube', 'lumi.sensor_cube.aqgl01'],
@@ -773,7 +784,8 @@ const devices = [
         description: 'Mi/Aqara smart home cube',
         meta: {battery: {voltageToPercentage: '3V_2100'}},
         fromZigbee: [fz.xiaomi_battery, fz.MFKZQ01LM_action_multistate, fz.MFKZQ01LM_action_analog],
-        exposes: [e.battery(), e.battery_voltage(),
+        exposes: [e.battery(), e.battery_voltage(), e.angle('action_angle'),
+            e.cube_side('action_from_side'), e.cube_side('action_side'), e.cube_side('action_to_side'),
             e.action(['shake', 'wakeup', 'fall', 'tap', 'slide', 'flip180', 'flip90', 'rotate_left', 'rotate_right'])],
         toZigbee: [],
     },
@@ -785,6 +797,7 @@ const devices = [
         fromZigbee: [fz.on_off, fz.xiaomi_power, fz.xiaomi_switch_basic, fz.ignore_occupancy_report, fz.ignore_illuminance_report],
         toZigbee: [tz.on_off, tz.xiaomi_switch_power_outage_memory, tz.xiaomi_power],
         exposes: [e.switch(), e.power().withAccess(ea.STATE_GET), e.energy(), e.temperature(), e.power_outage_memory()],
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.plug.mitw01'],
@@ -810,6 +823,7 @@ const devices = [
             e.power_outage_memory(), exposes.binary('auto_off', ea.STATE_SET, true, false)
                 .withDescription('Turn the device automatically off when attached device consumes less than 2W for 20 minutes'),
         ],
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.plug.maus01'],
@@ -845,6 +859,7 @@ const devices = [
             // https://github.com/Koenkk/zigbee-herdsman-converters/issues/1050
         },
         exposes: [e.switch(), e.power(), e.energy(), e.temperature().withAccess(ea.STATE), e.voltage().withAccess(ea.STATE), e.current()],
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.ctrl_86plug', 'lumi.ctrl_86plug.aq1'],
@@ -855,6 +870,7 @@ const devices = [
         toZigbee: [tz.on_off, tz.xiaomi_switch_power_outage_memory, tz.xiaomi_power],
         exposes: [e.switch(), e.power().withAccess(ea.STATE_GET), e.energy(), e.temperature().withAccess(ea.STATE),
             e.voltage().withAccess(ea.STATE), e.power_outage_memory()],
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.sensor_smoke'],
@@ -920,6 +936,7 @@ const devices = [
         fromZigbee: [fz.xiaomi_curtain_position, fz.cover_position_tilt, fz.xiaomi_curtain_options],
         toZigbee: [tz.xiaomi_curtain_position_state, tz.xiaomi_curtain_options],
         exposes: [e.cover_position().setAccess('state', ea.ALL)],
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.curtain.hagl04'],
@@ -942,6 +959,7 @@ const devices = [
             await reporting.bind(endpoint, coordinatorEndpoint, ['genPowerCfg']);
             await reporting.batteryPercentageRemaining(endpoint);
         },
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.relay.c2acn01'],
@@ -958,6 +976,7 @@ const devices = [
             e.switch().withEndpoint('l1'), e.switch().withEndpoint('l2'),
             exposes.binary('interlock', ea.STATE_SET, true, false)
                 .withDescription('Enabling prevents both relais being on at the same time')],
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.lock.acn02'],
@@ -981,6 +1000,7 @@ const devices = [
             device.type = 'EndDevice';
             device.save();
         },
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.lock.acn03'],
@@ -1021,6 +1041,7 @@ const devices = [
                 'ring_bell', 'change_language_to', 'finger_open', 'password_open', 'door_closed',
             ]),
         ],
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.remote.b286opcn01'],
@@ -1106,6 +1127,7 @@ const devices = [
             await reporting.illuminance(endpoint, {min: 15, max: repInterval.HOUR, change: 500});
         },
         exposes: [e.battery(), e.illuminance(), e.illuminance_lux()],
+        ota: ota.zigbeeOTA,
     },
     {
         zigbeeModel: ['lumi.light.rgbac1'],
@@ -3262,7 +3284,7 @@ const devices = [
         vendor: 'Philips',
         description: 'Hue white and color ambiance LightStrip plus',
         meta: {turnsOffAtBrightness1: true},
-        extend: preset.hue.light_onoff_brightness_colortemp_color(),
+        extend: preset.hue.light_onoff_brightness_colortemp_color({colorTempRange: [153, 500]}),
         ota: ota.zigbeeOTA,
     },
     {
@@ -3423,7 +3445,7 @@ const devices = [
         vendor: 'Philips',
         description: 'Hue white ambiance GU10 with Bluetooth',
         meta: {turnsOffAtBrightness1: true},
-        extend: preset.hue.light_onoff_brightness_colortemp(),
+        extend: preset.hue.light_onoff_brightness_colortemp({colorTempRange: [153, 454]}),
         ota: ota.zigbeeOTA,
     },
     {
@@ -3433,6 +3455,24 @@ const devices = [
         description: 'Hue white ambiance GU10 with Bluetooth',
         meta: {turnsOffAtBrightness1: true},
         extend: preset.hue.light_onoff_brightness_colortemp(),
+        ota: ota.zigbeeOTA,
+    },
+    {
+        zigbeeModel: ['3418131P6'],
+        model: '3418131P6',
+        vendor: 'Philips',
+        description: 'Hue white ambiance Adore GU10 with Bluetooth (3 spots)',
+        meta: {turnsOffAtBrightness1: true},
+        extend: preset.hue.light_onoff_brightness_colortemp({colorTempRange: [153, 454]}),
+        ota: ota.zigbeeOTA,
+    },
+    {
+        zigbeeModel: ['3417931P6'],
+        model: '3417931P6',
+        vendor: 'Philips',
+        description: 'Hue white ambiance Adore GU10 with Bluetooth (2 spots)',
+        meta: {turnsOffAtBrightness1: true},
+        extend: preset.hue.light_onoff_brightness_colortemp({colorTempRange: [153, 454]}),
         ota: ota.zigbeeOTA,
     },
     {
@@ -3675,7 +3715,7 @@ const devices = [
         vendor: 'Philips',
         description: 'Hue white ambiance Aurelle square panel light',
         meta: {turnsOffAtBrightness1: true},
-        extend: preset.hue.light_onoff_brightness_colortemp(),
+        extend: preset.hue.light_onoff_brightness_colortemp({colorTempRange: [153, 454]}),
         ota: ota.zigbeeOTA,
     },
     {
@@ -3702,7 +3742,7 @@ const devices = [
         vendor: 'Philips',
         description: 'Hue white ambiance Aurelle rectangle panel light',
         meta: {turnsOffAtBrightness1: true},
-        extend: preset.hue.light_onoff_brightness_colortemp(),
+        extend: preset.hue.light_onoff_brightness_colortemp({colorTempRange: [153, 454]}),
         ota: ota.zigbeeOTA,
     },
     {
@@ -3819,7 +3859,7 @@ const devices = [
         vendor: 'Philips',
         description: 'Hue outdoor Impress wall lamp (low voltage)',
         meta: {turnsOffAtBrightness1: true},
-        extend: preset.hue.light_onoff_brightness_colortemp_color(),
+        extend: preset.hue.light_onoff_brightness_colortemp_color({colorTempRange: [153, 500]}),
         ota: ota.zigbeeOTA,
     },
     {
@@ -4289,7 +4329,16 @@ const devices = [
         vendor: 'Philips',
         description: 'Hue Lily outdoor spot light',
         meta: {turnsOffAtBrightness1: true},
-        extend: preset.hue.light_onoff_brightness_colortemp_color(),
+        extend: preset.hue.light_onoff_brightness_colortemp_color({colorTempRange: [153, 500]}),
+        ota: ota.zigbeeOTA,
+    },
+    {
+        zigbeeModel: ['1741530P7'],
+        model: '1741530P7',
+        vendor: 'Philips',
+        description: 'Hue Lily outdoor spot light',
+        meta: {turnsOffAtBrightness1: true},
+        extend: preset.hue.light_onoff_brightness_colortemp_color({colorTempRange: [153, 500]}),
         ota: ota.zigbeeOTA,
     },
     {
@@ -5508,7 +5557,7 @@ const devices = [
     },
     {
         zigbeeModel: ['TWBulb01UK'],
-        model: 'HV-GSCXZB279_HV-GSCXZB229',
+        model: 'HV-GSCXZB279_HV-GSCXZB229_HV-GSCXZB229K',
         vendor: 'Hive',
         description: 'Active light, warm to cool white (E27 & B22)',
         extend: preset.light_onoff_brightness_colortemp(),
@@ -13529,12 +13578,13 @@ const devices = [
         description: 'IOT remote control smart gas lock',
         fromZigbee: [fz.on_off, fz.battery],
         toZigbee: [tz.dawondns_only_off], // Only support 'Off' command
-        meta: {configureKey: 1, battery: {voltageToPercentage: '4LR6AA1_5v'}},
+        meta: {configureKey: 1},
         configure: async (device, coordinatorEndpoint, logger) => {
             const endpoint = device.getEndpoint(1);
             await reporting.bind(endpoint, coordinatorEndpoint, ['genOnOff', 'genPowerCfg']);
             await reporting.onOff(endpoint);
             await reporting.batteryVoltage(endpoint);
+            await reporting.batteryPercentageRemaining(endpoint);
         },
         exposes: [e.battery(), e.switch(), e.voltage()],
     },
@@ -14261,7 +14311,7 @@ const devices = [
         vendor: 'SONOFF',
         whiteLabel: [{vendor: 'eWeLink', model: 'RHK06'}],
         description: 'Contact sensor',
-        exposes: [e.contact(), e.battery_low(), e.tamper(), e.battery(), e.battery_voltage()],
+        exposes: [e.contact(), e.battery_low(), e.battery(), e.battery_voltage()],
         fromZigbee: [fz.ias_contact_alarm_1, fz.battery],
         toZigbee: [],
         meta: {configureKey: 1},
@@ -14853,6 +14903,29 @@ const devices = [
             const endpoint = device.getEndpoint(1) || device.getEndpoint(5);
             await reporting.bind(endpoint, coordinatorEndpoint, ['closuresWindowCovering']);
             await reporting.currentPositionLiftPercentage(endpoint);
+        },
+    },
+    {
+        zigbeeModel: ['LK Switch'],
+        model: '545D6514',
+        vendor: 'Schneider Electric',
+        description: 'LK FUGA wiser wireless double relay',
+        meta: {multiEndpoint: true, configureKey: 1},
+        fromZigbee: [fz.on_off, fz.command_on, fz.command_off],
+        toZigbee: [tz.on_off],
+        endpoint: (device) => {
+            return {'l1': 1, 'l2': 2, 's1': 21, 's2': 22, 's3': 23, 's4': 24};
+        },
+        exposes: [e.switch().withEndpoint('l1'), e.switch().withEndpoint('l2'), e.action(['on_s*', 'off_s*'])],
+        configure: async (device, coordinatorEndpoint, logger) => {
+            device.endpoints.forEach(async (ep) => {
+                if (ep.outputClusters.includes(6)) {
+                    await reporting.bind(ep, coordinatorEndpoint, ['genOnOff']);
+                    if (ep.ID <= 2) {
+                        await reporting.onOff(ep);
+                    }
+                }
+            });
         },
     },
 
@@ -15802,7 +15875,7 @@ const devices = [
     },
     {
         zigbeeModel: ['RGBBulb01UK', 'RGBBulb02UK'],
-        model: 'AU-A1GSZ9RGBW',
+        model: 'AU-A1GSZ9RGBW_HV-GSCXZB269K',
         vendor: 'Aurora Lighting',
         description: 'AOne 9.5W smart RGBW GLS E27/B22',
         extend: preset.light_onoff_brightness_colortemp_color(),
